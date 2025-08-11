@@ -157,13 +157,20 @@ jobs:
         # Create namespace if it doesn't exist
         kubectl create namespace prod --dry-run=client -o yaml | kubectl apply -f -
         
+        # Install nginx ingress controller if not exists
+        if ! kubectl get deployment ingress-nginx-controller -n ingress-nginx &> /dev/null; then
+          echo "Installing nginx ingress controller..."
+          kubectl apply -f https://raw.githubusercontent.com/kubernetes/ingress-nginx/controller-v1.8.1/deploy/static/provider/baremetal/deploy.yaml
+          echo "Waiting for ingress controller to be ready..."
+          kubectl wait --namespace ingress-nginx --for=condition=ready pod --selector=app.kubernetes.io/component=controller --timeout=300s
+        fi
+        
         # Deploy applications
         kubectl apply -f k8s-prod/sc.yaml
         sleep 20
         kubectl apply -f k8s-prod/mysql.yaml -n prod
         kubectl apply -f k8s-prod/backend.yaml -n prod
         kubectl apply -f k8s-prod/frontend.yaml -n prod
-        kubectl apply -f k8s-prod/ci.yaml
         kubectl apply -f k8s-prod/ingress.yaml -n prod
         sleep 30
         
