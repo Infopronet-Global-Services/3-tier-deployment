@@ -139,7 +139,7 @@ jobs:
           frontend-image-report.html
 
   deploy-production:
-    runs-on: ubuntu-latest
+    runs-on: self-hosted
     needs: build-and-push 
     if: github.ref == 'refs/heads/main'
     
@@ -147,20 +147,11 @@ jobs:
     - name: Checkout Code
       uses: actions/checkout@v4
       
-    - name: Setup kubectl
-      uses: azure/setup-kubectl@v3
-      with:
-        version: 'latest'
-        
-    - name: Configure Kubernetes cluster access
+    - name: Verify Kubernetes cluster access
       run: |
-        # Create kubeconfig from secrets
-        mkdir -p ~/.kube
-        echo "${{ secrets.KUBE_CONFIG }}" | base64 -d > ~/.kube/config
-        chmod 600 ~/.kube/config
-        
-        # Verify cluster connection
+        # Verify cluster connection (kubectl should already be configured on self-hosted runner)
         kubectl cluster-info
+        kubectl get nodes
         
     - name: Deploy to Production
       run: |
