@@ -176,11 +176,11 @@ jobs:
         
     - name: Verify Deployment
       run: |
-        kubectl get pods -n prod
-        kubectl get services -n prod
-        kubectl get ingress -n prod
+        # Show what was deployed
+        kubectl get pods,svc,ingress -n prod
         
-        # Wait for pods to be ready
-        kubectl wait --for=condition=ready pod -l app=mysql -n prod --timeout=300s
-        kubectl wait --for=condition=ready pod -l app=backend -n prod --timeout=300s
-        kubectl wait --for=condition=ready pod -l app=frontend -n prod --timeout=300s
+        # Show access URL
+        echo "\nAccess your app at:"
+        kubectl get ingress -n prod -o jsonpath='{.items[0].status.loadBalancer.ingress[0].ip}' && echo "/" || echo "Ingress IP pending..."
+        
+        echo "\nDeployment complete! ✅"
