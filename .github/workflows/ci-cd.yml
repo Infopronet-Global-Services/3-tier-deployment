@@ -148,24 +148,27 @@ jobs:
     - name: Checkout Code
       uses: actions/checkout@v4
       
-    - name: Configure AWS credentials
-      uses: aws-actions/configure-aws-credentials@v4
-      with:
-        aws-access-key-id: ${{ secrets.AWS_ACCESS_KEY_ID }}
-        aws-secret-access-key: ${{ secrets.AWS_SECRET_ACCESS_KEY }}
-        aws-region: eu-north-1
-        
     - name: Setup kubectl
       uses: azure/setup-kubectl@v3
       with:
         version: 'latest'
         
-    - name: Update kubeconfig
+    - name: Configure Kubernetes cluster access
       run: |
-        aws eks update-kubeconfig --region eu-north-1 --name devopsshack-cluster
+        # Create kubeconfig from secrets
+        mkdir -p ~/.kube
+        echo "${{ secrets.KUBE_CONFIG }}" | base64 -d > ~/.kube/config
+        chmod 600 ~/.kube/config
+        
+        # Verify cluster connection
+        kubectl cluster-info
         
     - name: Deploy to Production
       run: |
+        # Create namespace if it doesn't exist
+        kubectl create namespace prod --dry-run=client -o yaml | kubectl apply -f -
+        
+        # Deploy applications
         kubectl apply -f k8s-prod/sc.yaml
         sleep 20
         kubectl apply -f k8s-prod/mysql.yaml -n prod
@@ -178,5 +181,10 @@ jobs:
     - name: Verify Deployment
       run: |
         kubectl get pods -n prod
-        sleep 20
+        kubectl get services -n prod
         kubectl get ingress -n prod
+        
+        # Wait for pods to be ready
+        kubectl wait --for=condition=ready pod -l app=mysql -n prod --timeout=300s
+        kubectl wait --for=condition=ready pod -l app=backend -n prod --timeout=300s
+        kubectl wait --for=condition=ready pod -l app=frontend -n prod --timeout=300s
