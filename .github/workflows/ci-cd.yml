@@ -147,25 +147,10 @@ jobs:
     - name: Checkout Code
       uses: actions/checkout@v4
       
-    - name: Setup kubectl
+    - name: Verify Kubernetes access
       run: |
-        # Install kubectl if not present
-        if ! command -v kubectl &> /dev/null; then
-          curl -LO "https://dl.k8s.io/release/$(curl -L -s https://dl.k8s.io/release/stable.txt)/bin/linux/amd64/kubectl"
-          sudo install -o root -g root -m 0755 kubectl /usr/local/bin/kubectl
-        fi
-        
-        # Setup kubeconfig if not exists
-        if [ ! -f ~/.kube/config ]; then
-          mkdir -p ~/.kube
-          # Use the kubeconfig from secrets as fallback
-          echo "${{ secrets.KUBE_CONFIG }}" | base64 -d > ~/.kube/config
-          chmod 600 ~/.kube/config
-        fi
-        
-        # Verify cluster connection
-        kubectl cluster-info
         kubectl get nodes
+        kubectl get namespaces
         
     - name: Deploy to Production
       run: |
