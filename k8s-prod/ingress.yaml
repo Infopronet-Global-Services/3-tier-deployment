@@ -10,7 +10,8 @@ metadata:
 spec:
   ingressClassName: alb
   rules:
-    - http:
+    - host: app.mylearncloud.shop    # Add this line
+      http:
         paths:
           - path: /api
             pathType: Prefix
