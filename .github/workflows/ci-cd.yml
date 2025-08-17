@@ -196,23 +196,28 @@ jobs:
         kubectl get nodes
         kubectl get namespaces
         
-    - name: Deploy to Production
+    - name: Deploy to Production with Helm
       run: |
-        # Create namespace if it doesn't exist
-        kubectl create namespace prod --dry-run=client -o yaml | kubectl apply -f -
+        # Deploy entire application stack using Helm
+        helm upgrade --install user-management-app ./helm/user-management-app \
+          --namespace prod \
+          --set global.dockerUsername=${{ secrets.DOCKER_USERNAME }} \
+          --set backend.image.tag=${{ github.sha }} \
+          --set frontend.image.tag=${{ github.sha }} \
+          --set storage.storageClass=null \
+          --wait \
+          --timeout=10m
         
-        # Deploy storage first
-        kubectl apply -f k8s-prod/storage.yaml
-        
-        # Deploy applications
-        kubectl apply -f k8s-prod/mysql.yaml
-        kubectl apply -f k8s-prod/backend.yaml
-        kubectl apply -f k8s-prod/frontend.yaml
-        kubectl apply -f k8s-prod/ingress.yaml
-        sleep 30
+        # Wait for rollout to complete (database first, then apps)
+        kubectl rollout status deployment/mysql -n prod --timeout=300s
+        kubectl rollout status deployment/backend -n prod --timeout=300s
+        kubectl rollout status deployment/frontend -n prod --timeout=300s
         
     - name: Verify Deployment
       run: |
+        # Show Helm release status
+        helm status user-management-app -n prod
+        
         # Show what was deployed
         kubectl get pods,svc,ingress -n prod
         
@@ -220,7 +225,7 @@ jobs:
         echo "\nAccess your app at:"
         kubectl get ingress -n prod -o jsonpath='{.items[0].status.loadBalancer.ingress[0].hostname}' && echo "/" || echo "ALB hostname pending..."
         
-        echo "\nDeployment complete! ✅"
+        echo "\nHelm deployment complete! ✅"
 
   notify:
     runs-on: ubuntu-latest

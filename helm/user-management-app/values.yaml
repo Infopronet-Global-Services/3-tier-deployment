@@ -1,0 +1,120 @@
+# Default values for user-management-app
+namespace: prod
+
+# Global settings
+global:
+  imageRegistry: docker.io
+  dockerUsername: ""  # Will be set via --set flag in CI/CD
+
+# MySQL Configuration
+mysql:
+  enabled: true
+  image:
+    repository: mysql
+    tag: "8"
+    pullPolicy: IfNotPresent
+  
+  auth:
+    rootPassword: "Aditya"
+    database: "crud_app"
+  
+  persistence:
+    enabled: true
+    storageClass: "ebs-gp3"
+    size: 3Gi
+  
+  service:
+    type: ClusterIP
+    port: 3306
+
+# Backend Configuration
+backend:
+  enabled: true
+  replicaCount: 3
+  
+  image:
+    repository: "{{ .Values.global.dockerUsername }}/backend"
+    tag: "latest"
+    pullPolicy: Always
+  
+  service:
+    type: ClusterIP
+    port: 5000
+    targetPort: 5000
+  
+  env:
+    - name: DB_HOST
+      value: "mysql"
+    - name: DB_USER
+      value: "root"
+    - name: DB_PASSWORD
+      value: "Aditya"
+    - name: DB_NAME
+      value: "crud_app"
+    - name: JWT_SECRET
+      value: "your-secret-key"
+
+# Frontend Configuration
+frontend:
+  enabled: true
+  replicaCount: 3
+  
+  image:
+    repository: "{{ .Values.global.dockerUsername }}/frontend"
+    tag: "latest"
+    pullPolicy: Always
+  
+  service:
+    type: ClusterIP
+    port: 80
+    targetPort: 80
+
+# Ingress Configuration
+ingress:
+  enabled: true
+  className: "alb"
+  annotations:
+    kubernetes.io/ingress.class: alb
+    alb.ingress.kubernetes.io/scheme: internet-facing
+    alb.ingress.kubernetes.io/target-type: ip
+    alb.ingress.kubernetes.io/certificate-arn: "arn:aws:acm:eu-north-1:857156722233:certificate/9326c6b7-089a-4936-9483-190fb8f76194"
+    alb.ingress.kubernetes.io/ssl-redirect: '443'
+    alb.ingress.kubernetes.io/listen-ports: '[{"HTTP": 80}, {"HTTPS": 443}]'
+  
+  hosts:
+    - host: app.mylearncloud.shop
+      paths:
+        - path: /api
+          pathType: Prefix
+          service:
+            name: backend-svc
+            port: 5000
+        - path: /
+          pathType: Prefix
+          service:
+            name: frontend-svc
+            port: 80
+  
+  # Wildcard rule for direct ALB access
+  wildcardPaths:
+    - path: /api
+      pathType: Prefix
+      service:
+        name: backend-svc
+        port: 5000
+    - path: /
+      pathType: Prefix
+      service:
+        name: frontend-svc
+        port: 80
+
+# Storage Configuration
+storage:
+  storageClass:
+    name: ebs-gp3
+    provisioner: ebs.csi.aws.com
+    volumeBindingMode: WaitForFirstConsumer
+    parameters:
+      type: gp3
+      fsType: ext4
+    allowVolumeExpansion: true

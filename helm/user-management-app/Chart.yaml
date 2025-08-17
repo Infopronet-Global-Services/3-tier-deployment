@@ -1,0 +1,14 @@
+apiVersion: v2
+name: user-management-app
+description: A 3-tier DevSecOps application with React frontend, Node.js backend, and MySQL database
+type: application
+version: 0.1.0
+appVersion: "1.0.0"
+keywords:
+  - nodejs
+  - react
+  - mysql
+  - devsecops
+maintainers:
+  - name: DevOps Team
+    email: devops@mylearncloud.shop
