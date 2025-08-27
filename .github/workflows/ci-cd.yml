@@ -205,6 +205,7 @@ jobs:
         kubectl apply -f k8s-prod/frontend.yaml
         kubectl apply -f k8s-prod/ingress.yaml
         kubectl apply -f k8s-prod/grafana-ingress.yaml
+        kubectl apply -f k8s-prod/argocd-ingress.yaml
         sleep 30
         
     - name: Verify Deployment
@@ -212,6 +213,7 @@ jobs:
         # Show what was deployed
         kubectl get pods,svc,ingress -n prod
         kubectl get ingress -n monitoring
+        kubectl get ingress -n argocd
         
         # Show access App ALB URL
         echo "\nAccess your app at:"
@@ -219,6 +221,10 @@ jobs:
         # Show access Grafana ALB URL
         echo "\nAccess your monitoring dashboard at:"
         kubectl get ingress grafana-ingress -n monitoring -o jsonpath='{.status.loadBalancer.ingress[0].hostname}' && echo "/" || echo "ALB hostname pending..."
+        
+        # Show access ArgoCD ALB URL
+        echo "\nAccess your ArgoCD at:"
+        kubectl get ingress argocd-server-ingress -n argocd -o jsonpath='{.status.loadBalancer.ingress[0].hostname}' && echo "/" || echo "ALB hostname pending..."
         
         echo "\nDeployment complete! ✅"
         
@@ -262,6 +268,7 @@ jobs:
           
           **Application:** https://app.mylearncloud.shop
           **Grafana:** https://grafana.mylearncloud.shop
+          **ArgoCD:** https://argocd.mylearncloud.shop
           
           **Pipeline:** ${{ github.server_url }}/${{ github.repository }}/actions/runs/${{ github.run_id }}
         fields: repo,message,commit,author,action,eventName,ref,workflow
@@ -292,6 +299,7 @@ jobs:
           <ul>
             <li><a href="https://app.mylearncloud.shop">Application</a></li>
             <li><a href="https://grafana.mylearncloud.shop">Grafana Dashboard</a></li>
+            <li><a href="https://argocd.mylearncloud.shop">ArgoCD</a></li>
             <li><a href="${{ github.server_url }}/${{ github.repository }}/actions/runs/${{ github.run_id }}">Pipeline Details</a></li>
           </ul>
           
