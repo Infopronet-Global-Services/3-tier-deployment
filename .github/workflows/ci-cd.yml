@@ -209,6 +209,7 @@ jobs:
         kubectl apply -f k8s-prod/backend.yaml
         kubectl apply -f k8s-prod/frontend.yaml
         kubectl apply -f k8s-prod/ingress.yaml
+        kubectl apply -f k8s-prod/grafana-ingress.yaml
         sleep 30
         
     - name: Verify Deployment
@@ -216,12 +217,17 @@ jobs:
         # Show what was deployed
         kubectl get pods,svc,ingress -n prod
         
-        # Show access URL
+        # Show access App ALB URL
         echo "\nAccess your app at:"
         kubectl get ingress -n prod -o jsonpath='{.items[0].status.loadBalancer.ingress[0].hostname}' && echo "/" || echo "ALB hostname pending..."
+
+        # Show access Grafana ALB URL
+        echo "\nAccess your monitoring dashboard at:"
+        kubectl get ingress grafana-ingress -n monitoring -o jsonpath='{.status.loadBalancer.ingress[0].hostname}' && echo "/" || echo "ALB hostname pending..."
         
         echo "\nDeployment complete! ✅"
 
+        
   notify:
     runs-on: ubuntu-latest
     needs: [deploy-production]
