@@ -198,6 +198,15 @@ jobs:
         
     - name: Deploy to Production with Helm
       run: |
+        # Clean up existing resources that conflict with Helm management
+        echo "Cleaning up existing unmanaged resources..."
+        
+        # Delete existing ArgoCD ingress if it exists
+        kubectl delete ingress argocd-server-ingress -n argocd --ignore-not-found=true
+        
+        # Delete existing Grafana ingress if it exists
+        kubectl delete ingress grafana-ingress -n monitoring --ignore-not-found=true
+        
         # Clean up existing namespace if it exists without Helm ownership
         if kubectl get namespace prod >/dev/null 2>&1; then
           echo "Namespace 'prod' exists, checking Helm ownership..."
