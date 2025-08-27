@@ -172,7 +172,7 @@ jobs:
           backend-image-report.html
           frontend-image-report.html
 
-  deploy-with-argocd-monitoring:
+  deploy-production:
     runs-on: ubuntu-latest
     needs: trivy-image-scan
     if: github.ref == 'refs/heads/main'
@@ -180,9 +180,7 @@ jobs:
     steps:
     - name: Checkout Code
       uses: actions/checkout@v4
-      with:
-        token: ${{ secrets.GITHUB_TOKEN }}
-        
+      
     - name: Configure AWS credentials
       uses: aws-actions/configure-aws-credentials@v4
       with:
@@ -192,44 +190,41 @@ jobs:
 
     - name: Update kubeconfig
       run: aws eks update-kubeconfig --name uche --region eu-north-1
-        
-    - name: Update GitOps values
+      
+    - name: Verify Kubernetes access
       run: |
-        # Update image tags in GitOps values file for tracking
-        sed -i "s/tag: .*/tag: ${{ github.sha }}/g" gitops/environments/prod/values.yaml
-        sed -i "s/dockerUsername: .*/dockerUsername: ${{ secrets.DOCKER_USERNAME }}/g" gitops/environments/prod/values.yaml
+        kubectl get nodes
+        kubectl get namespaces
         
-    - name: Deploy to Production with Helm
+    - name: Deploy to Production
       run: |
-        # Deploy using Helm (ArgoCD will monitor for drift)
-        helm upgrade --install user-management-app ./helm/user-management-app \
-          --namespace prod \
-          --set global.dockerUsername=${{ secrets.DOCKER_USERNAME }} \
-          --set backend.image.tag=${{ github.sha }} \
-          --set frontend.image.tag=${{ github.sha }} \
-          --set storage.storageClass=null \
-          --wait \
-          --timeout=10m
+        # Create namespace if it doesn't exist
+        kubectl create namespace prod --dry-run=client -o yaml | kubectl apply -f -
         
-    - name: Commit GitOps tracking
-      run: |
-        git config --local user.email "action@github.com"
-        git config --local user.name "GitHub Action"
-        git add gitops/environments/prod/values.yaml
-        git commit -m "Track deployment: ${{ github.sha }}" || exit 0
-        git push
+        # Deploy storage first
+        kubectl apply -f k8s-prod/storage.yaml
+        
+        # Deploy applications
+        kubectl apply -f k8s-prod/mysql.yaml
+        kubectl apply -f k8s-prod/backend.yaml
+        kubectl apply -f k8s-prod/frontend.yaml
+        kubectl apply -f k8s-prod/ingress.yaml
+        sleep 30
         
     - name: Verify Deployment
       run: |
-        kubectl rollout status deployment/mysql -n prod --timeout=300s
-        kubectl rollout status deployment/backend -n prod --timeout=300s
-        kubectl rollout status deployment/frontend -n prod --timeout=300s
+        # Show what was deployed
         kubectl get pods,svc,ingress -n prod
-        echo "✅ Deployment complete with ArgoCD monitoring!"
+        
+        # Show access URL
+        echo "\nAccess your app at:"
+        kubectl get ingress -n prod -o jsonpath='{.items[0].status.loadBalancer.ingress[0].hostname}' && echo "/" || echo "ALB hostname pending..."
+        
+        echo "\nDeployment complete! ✅"
 
   notify:
     runs-on: ubuntu-latest
-    needs: [deploy-with-argocd-monitoring]
+    needs: [deploy-production]
     if: always() && github.ref == 'refs/heads/main'
     
     steps:
@@ -239,16 +234,16 @@ jobs:
     - name: Set notification status
       id: status
       run: |
-        if [[ "${{ needs.deploy-with-argocd-monitoring.result }}" == "success" ]]; then
+        if [[ "${{ needs.deploy-production.result }}" == "success" ]]; then
           echo "status=success" >> $GITHUB_OUTPUT
           echo "color=good" >> $GITHUB_OUTPUT
           echo "emoji=:white_check_mark:" >> $GITHUB_OUTPUT
-          echo "message=Deployment completed with ArgoCD monitoring enabled!" >> $GITHUB_OUTPUT
+          echo "message=Deployment completed successfully!!" >> $GITHUB_OUTPUT
         else
           echo "status=failure" >> $GITHUB_OUTPUT
           echo "color=danger" >> $GITHUB_OUTPUT
           echo "emoji=:x:" >> $GITHUB_OUTPUT
-          echo "message=Deployment with ArgoCD monitoring failed!" >> $GITHUB_OUTPUT
+          echo "message=Deployment failed!" >> $GITHUB_OUTPUT
         fi
         
     - name: Slack Notification
