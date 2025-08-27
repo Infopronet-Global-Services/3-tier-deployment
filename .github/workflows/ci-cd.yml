@@ -216,6 +216,7 @@ jobs:
       run: |
         # Show what was deployed
         kubectl get pods,svc,ingress -n prod
+        kubectl get ingress -n monitoring
         
         # Show access App ALB URL
         echo "\nAccess your app at:"
