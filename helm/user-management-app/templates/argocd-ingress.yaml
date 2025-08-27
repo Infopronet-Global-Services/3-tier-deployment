@@ -1,0 +1,35 @@
+{{- if .Values.argocd.ingress.enabled }}
+apiVersion: networking.k8s.io/v1
+kind: Ingress
+metadata:
+  name: argocd-server-ingress
+  namespace: {{ .Values.argocd.namespace }}
+  annotations:
+    {{- with .Values.argocd.ingress.annotations }}
+    {{- toYaml . | nindent 4 }}
+    {{- end }}
+spec:
+  ingressClassName: {{ .Values.argocd.ingress.className }}
+  rules:
+    - host: {{ .Values.argocd.ingress.host }}
+      http:
+        paths:
+          - path: /
+            pathType: Prefix
+            backend:
+              service:
+                name: {{ .Values.argocd.service.name }}
+                port:
+                  number: {{ .Values.argocd.service.port }}
+    {{- if .Values.argocd.ingress.wildcardRule }}
+    - http:  # Wildcard rule for direct ALB access
+        paths:
+          - path: /
+            pathType: Prefix
+            backend:
+              service:
+                name: {{ .Values.argocd.service.name }}
+                port:
+                  number: {{ .Values.argocd.service.port }}
+    {{- end }}
+{{- end }}

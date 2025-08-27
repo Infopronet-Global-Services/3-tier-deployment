@@ -196,37 +196,38 @@ jobs:
         kubectl get nodes
         kubectl get namespaces
         
-    - name: Deploy to Production
+    - name: Deploy to Production with Helm
       run: |
-        # Create namespace if it doesn't exist
-        kubectl create namespace prod --dry-run=client -o yaml | kubectl apply -f -
-        
-        # Deploy storage first
-        kubectl apply -f k8s-prod/storage.yaml
-        
-        # Deploy applications
-        kubectl apply -f k8s-prod/mysql.yaml
-        kubectl apply -f k8s-prod/backend.yaml
-        kubectl apply -f k8s-prod/frontend.yaml
-        kubectl apply -f k8s-prod/ingress.yaml
-        kubectl apply -f k8s-prod/grafana-ingress.yaml
-        sleep 30
+        # Deploy entire application stack using Helm
+        helm upgrade --install user-management-app ./helm/user-management-app \
+          --namespace prod \
+          --create-namespace \
+          --set global.dockerUsername=${{ secrets.DOCKER_USERNAME }} \
+          --set backend.image.tag=${{ github.sha }} \
+          --set frontend.image.tag=${{ github.sha }} \
+          --set storage.storageClass=null \
+          --wait \
+          --timeout=5m
         
     - name: Verify Deployment
       run: |
+        # Wait for rollout to complete
+        kubectl rollout status deployment/mysql -n prod --timeout=300s
+        kubectl rollout status deployment/backend -n prod --timeout=300s
+        kubectl rollout status deployment/frontend -n prod --timeout=300s
+        
         # Show what was deployed
         kubectl get pods,svc,ingress -n prod
         kubectl get ingress -n monitoring
+        kubectl get ingress -n argocd
         
-        # Show access App ALB URL
-        echo "\nAccess your app at:"
-        kubectl get ingress -n prod -o jsonpath='{.items[0].status.loadBalancer.ingress[0].hostname}' && echo "/" || echo "ALB hostname pending..."
-
-        # Show access Grafana ALB URL
-        echo "\nAccess your monitoring dashboard at:"
-        kubectl get ingress grafana-ingress -n monitoring -o jsonpath='{.status.loadBalancer.ingress[0].hostname}' && echo "/" || echo "ALB hostname pending..."
+        # Show access URLs
+        echo "\n🚀 Deployment URLs:"
+        echo "📱 Application: https://app.mylearncloud.shop"
+        echo "📊 Grafana: https://grafana.mylearncloud.shop"
+        echo "🔄 ArgoCD: https://argocd.mylearncloud.shop"
         
-        echo "\nDeployment complete! ✅"
+        echo "\n✅ Helm deployment complete!"
 
         
   notify:
@@ -269,6 +270,7 @@ jobs:
           
           **Application:** https://app.mylearncloud.shop
           **Grafana:** https://grafana.mylearncloud.shop
+          **ArgoCD:** https://argocd.mylearncloud.shop
           
           **Pipeline:** ${{ github.server_url }}/${{ github.repository }}/actions/runs/${{ github.run_id }}
         fields: repo,message,commit,author,action,eventName,ref,workflow
@@ -299,6 +301,7 @@ jobs:
           <ul>
             <li><a href="https://app.mylearncloud.shop">Application</a></li>
             <li><a href="https://grafana.mylearncloud.shop">Grafana Dashboard</a></li>
+            <li><a href="https://argocd.mylearncloud.shop">ArgoCD</a></li>
             <li><a href="${{ github.server_url }}/${{ github.repository }}/actions/runs/${{ github.run_id }}">Pipeline Details</a></li>
           </ul>
           

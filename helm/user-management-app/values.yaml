@@ -118,3 +118,42 @@ storage:
       type: gp3
       fsType: ext4
     allowVolumeExpansion: true
+
+# ArgoCD Ingress Configuration
+argocd:
+  namespace: argocd
+  ingress:
+    enabled: true
+    className: "alb"
+    host: argocd.mylearncloud.shop
+    wildcardRule: true
+    annotations:
+      kubernetes.io/ingress.class: alb
+      alb.ingress.kubernetes.io/scheme: internet-facing
+      alb.ingress.kubernetes.io/target-type: ip
+      alb.ingress.kubernetes.io/certificate-arn: "arn:aws:acm:eu-north-1:857156722233:certificate/bd1d98f5-3edc-4e53-a088-df3d90fb3d26"
+      alb.ingress.kubernetes.io/ssl-redirect: '443'
+      alb.ingress.kubernetes.io/listen-ports: '[{"HTTP": 80}, {"HTTPS": 443}]'
+      alb.ingress.kubernetes.io/backend-protocol: HTTPS
+  service:
+    name: argocd-server
+    port: 80
+
+# Grafana Ingress Configuration
+grafana:
+  namespace: monitoring
+  ingress:
+    enabled: true
+    className: "alb"
+    host: grafana.mylearncloud.shop
+    wildcardRule: true
+    annotations:
+      kubernetes.io/ingress.class: alb
+      alb.ingress.kubernetes.io/scheme: internet-facing
+      alb.ingress.kubernetes.io/target-type: ip
+      alb.ingress.kubernetes.io/certificate-arn: "arn:aws:acm:eu-north-1:857156722233:certificate/61474827-a9b2-4760-9733-28ec2265c87c"
+      alb.ingress.kubernetes.io/ssl-redirect: '443'
+      alb.ingress.kubernetes.io/listen-ports: '[{"HTTP": 80}, {"HTTPS": 443}]'
+  service:
+    name: monitoring-grafana
+    port: 80
