@@ -198,6 +198,17 @@ jobs:
         
     - name: Deploy to Production with Helm
       run: |
+        # Clean up existing namespace if it exists without Helm ownership
+        if kubectl get namespace prod >/dev/null 2>&1; then
+          echo "Namespace 'prod' exists, checking Helm ownership..."
+          if ! kubectl get namespace prod -o jsonpath='{.metadata.annotations.meta\.helm\.sh/release-name}' | grep -q user-management-app; then
+            echo "Deleting unmanaged namespace 'prod'..."
+            kubectl delete namespace prod --ignore-not-found=true
+            echo "Waiting for namespace deletion..."
+            kubectl wait --for=delete namespace/prod --timeout=60s || true
+          fi
+        fi
+        
         # Deploy entire application stack using Helm
         helm upgrade --install user-management-app ./helm/user-management-app \
           --namespace prod \
@@ -207,7 +218,7 @@ jobs:
           --set frontend.image.tag=${{ github.sha }} \
           --set storage.storageClass=null \
           --wait \
-          --timeout=5m
+          --timeout=10m
         
     - name: Verify Deployment
       run: |
