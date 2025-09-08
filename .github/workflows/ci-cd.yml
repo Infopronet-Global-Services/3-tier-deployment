@@ -196,6 +196,26 @@ jobs:
       with:
         version: '3.12.0'
         
+    - name: Update values.yaml with new image tags
+      run: |
+        # Get short commit SHA
+        SHORT_SHA=$(echo ${{ github.sha }} | cut -c1-8)
+        
+        # Update values.yaml with new image tags
+        sed -i "s/tag: .*/tag: ${{ github.sha }}/g" helm/user-management-app/values.yaml
+        
+        # Show the updated values
+        echo "Updated values.yaml:"
+        cat helm/user-management-app/values.yaml
+        
+    - name: Commit updated values.yaml
+      run: |
+        git config --local user.email "action@github.com"
+        git config --local user.name "GitHub Action"
+        git add helm/user-management-app/values.yaml
+        git commit -m "Update image tags to ${{ github.sha }}" || exit 0
+        git push
+        
     - name: Deploy to Production with Helm
       run: |
         # Deploy infrastructure components (non-prod namespace)
@@ -207,8 +227,6 @@ jobs:
           echo "Helm release exists, upgrading..."
           helm upgrade user-management-app ./helm/user-management-app \
             --namespace prod \
-            --set image.frontend.tag=${{ github.sha }} \
-            --set image.backend.tag=${{ github.sha }} \
             --wait --timeout=300s
         else
           echo "No existing Helm release, installing..."
@@ -219,8 +237,6 @@ jobs:
           helm install user-management-app ./helm/user-management-app \
             --namespace prod \
             --create-namespace \
-            --set image.frontend.tag=${{ github.sha }} \
-            --set image.backend.tag=${{ github.sha }} \
             --wait --timeout=300s
         fi
         
