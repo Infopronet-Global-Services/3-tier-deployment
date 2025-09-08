@@ -175,6 +175,9 @@ jobs:
     steps:
     - name: Checkout Code
       uses: actions/checkout@v4
+      with:
+        token: ${{ secrets.GITHUB_TOKEN }}
+        fetch-depth: 0
       
     - name: Configure AWS credentials
       uses: aws-actions/configure-aws-credentials@v4
@@ -208,14 +211,6 @@ jobs:
         echo "Updated values.yaml:"
         cat helm/user-management-app/values.yaml
         
-    - name: Commit updated values.yaml
-      run: |
-        git config --local user.email "action@github.com"
-        git config --local user.name "GitHub Action"
-        git add helm/user-management-app/values.yaml
-        git commit -m "Update image tags to ${{ github.sha }}" || exit 0
-        git push
-        
     - name: Deploy to Production with Helm
       run: |
         # Deploy infrastructure components (non-prod namespace)
@@ -227,6 +222,8 @@ jobs:
           echo "Helm release exists, upgrading..."
           helm upgrade user-management-app ./helm/user-management-app \
             --namespace prod \
+            --set image.frontend.tag=${{ github.sha }} \
+            --set image.backend.tag=${{ github.sha }} \
             --wait --timeout=300s
         else
           echo "No existing Helm release, installing..."
@@ -237,6 +234,8 @@ jobs:
           helm install user-management-app ./helm/user-management-app \
             --namespace prod \
             --create-namespace \
+            --set image.frontend.tag=${{ github.sha }} \
+            --set image.backend.tag=${{ github.sha }} \
             --wait --timeout=300s
         fi
         
