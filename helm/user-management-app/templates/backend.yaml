@@ -29,15 +29,18 @@ spec:
             - name: DB_PASSWORD
               valueFrom:
                 secretKeyRef:
-                  name: mysql-secret
+                  name: mysql-secret-from-aws
                   key: MYSQL_ROOT_PASSWORD
             - name: DB_NAME
               valueFrom:
-                configMapKeyRef:
-                  name: mysql-config
+                secretKeyRef:
+                  name: mysql-secret-from-aws
                   key: MYSQL_DATABASE
             - name: JWT_SECRET
-              value: "your-secret-key"
+              valueFrom:
+                secretKeyRef:
+                  name: mysql-secret-from-aws
+                  key: JWT_SECRET
 ---
 apiVersion: v1
 kind: Service
