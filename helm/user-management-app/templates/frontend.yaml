@@ -1,14 +1,13 @@
-{{- if .Values.frontend.enabled }}
 ---
 apiVersion: apps/v1
 kind: Deployment
 metadata:
   name: frontend
-  namespace: {{ .Values.namespace }}
+  namespace: prod
   labels:
     app: frontend
 spec:
-  replicas: {{ .Values.frontend.replicaCount }}
+  replicas: 3
   selector:
     matchLabels:
       app: frontend
@@ -19,22 +18,19 @@ spec:
     spec:
       containers:
         - name: frontend
-          image: {{ .Values.global.dockerUsername }}/frontend:{{ .Values.frontend.image.tag }}
-          imagePullPolicy: {{ .Values.frontend.image.pullPolicy }}
+          image: {{ .Values.image.frontend.repository }}:{{ .Values.image.frontend.tag }}
           ports:
-            - containerPort: {{ .Values.frontend.service.targetPort }}
-
+            - containerPort: 80
 ---
 apiVersion: v1
 kind: Service
 metadata:
   name: frontend-svc
-  namespace: {{ .Values.namespace }}
+  namespace: prod
 spec:
   selector:
     app: frontend
   ports:
-    - port: {{ .Values.frontend.service.port }}
-      targetPort: {{ .Values.frontend.service.targetPort }}
-  type: {{ .Values.frontend.service.type }}
-{{- end }}
+    - port: 80
+      targetPort: 80
+  type: ClusterIP

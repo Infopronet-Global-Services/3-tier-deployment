@@ -1,40 +1,39 @@
-{{- if .Values.mysql.enabled }}
 ---
 apiVersion: v1
 kind: Secret
 metadata:
   name: mysql-secret
-  namespace: {{ .Values.namespace }}
+  namespace: prod
   labels:
     app: mysql
 type: Opaque
 stringData:
-  MYSQL_ROOT_PASSWORD: {{ .Values.mysql.auth.rootPassword }}
+  MYSQL_ROOT_PASSWORD: Aditya
 
 ---
 apiVersion: v1
 kind: ConfigMap
 metadata:
   name: mysql-config
-  namespace: {{ .Values.namespace }}
+  namespace: prod
   labels:
     app: mysql
 data:
-  MYSQL_DATABASE: {{ .Values.mysql.auth.database }}
+  MYSQL_DATABASE: crud_app
 
 ---
 apiVersion: v1
 kind: ConfigMap
 metadata:
   name: mysql-initdb-config
-  namespace: {{ .Values.namespace }}
+  namespace: prod
   labels:
     app: mysql
 data:
   init.sql: |
-    CREATE DATABASE IF NOT EXISTS {{ .Values.mysql.auth.database }};
+    CREATE DATABASE IF NOT EXISTS crud_app;
 
-    USE {{ .Values.mysql.auth.database }};
+    USE crud_app;
 
     CREATE TABLE IF NOT EXISTS users (
       id INT AUTO_INCREMENT PRIMARY KEY,
@@ -51,7 +50,7 @@ apiVersion: v1
 kind: Service
 metadata:
   name: mysql
-  namespace: {{ .Values.namespace }}
+  namespace: prod
   labels:
     app: mysql
 spec:
@@ -59,15 +58,15 @@ spec:
   selector:
     app: mysql
   ports:
-    - port: {{ .Values.mysql.service.port }}
-      targetPort: {{ .Values.mysql.service.port }}
+    - port: 3306
+      targetPort: 3306
 
 ---
 apiVersion: apps/v1
 kind: Deployment
 metadata:
   name: mysql
-  namespace: {{ .Values.namespace }}
+  namespace: prod
   labels:
     app: mysql
 spec:
@@ -82,10 +81,9 @@ spec:
     spec:
       containers:
         - name: mysql
-          image: {{ .Values.mysql.image.repository }}:{{ .Values.mysql.image.tag }}
-          imagePullPolicy: {{ .Values.mysql.image.pullPolicy }}
+          image: mysql:8
           ports:
-            - containerPort: {{ .Values.mysql.service.port }}
+            - containerPort: 3306
           env:
             - name: MYSQL_ROOT_PASSWORD
               valueFrom:
@@ -109,4 +107,3 @@ spec:
         - name: initdb
           configMap:
             name: mysql-initdb-config
-{{- end }}

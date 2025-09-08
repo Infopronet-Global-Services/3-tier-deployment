@@ -1,28 +1,24 @@
-{{- if .Values.storage.storageClass }}
 apiVersion: storage.k8s.io/v1
 kind: StorageClass
 metadata:
-  name: {{ .Values.storage.storageClass.name }}
-provisioner: {{ .Values.storage.storageClass.provisioner }}
-volumeBindingMode: {{ .Values.storage.storageClass.volumeBindingMode }}
+  name: ebs-gp3
+provisioner: ebs.csi.aws.com
+volumeBindingMode: WaitForFirstConsumer
 parameters:
-  type: {{ .Values.storage.storageClass.parameters.type }}
-  fsType: {{ .Values.storage.storageClass.parameters.fsType }}
-allowVolumeExpansion: {{ .Values.storage.storageClass.allowVolumeExpansion }}
-{{- end }}
+  type: gp3
+  fsType: ext4
+allowVolumeExpansion: true
 
 ---
-{{- if .Values.mysql.persistence.enabled }}
 apiVersion: v1
 kind: PersistentVolumeClaim
 metadata:
   name: mysql-pvc
-  namespace: {{ .Values.namespace }}
+  namespace: prod
 spec:
   accessModes:
     - ReadWriteOnce
-  storageClassName: {{ .Values.mysql.persistence.storageClass }}
+  storageClassName: ebs-gp3
   resources:
     requests:
-      storage: {{ .Values.mysql.persistence.size }}
-{{- end }}
+      storage: 3Gi

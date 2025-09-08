@@ -191,25 +191,33 @@ jobs:
         kubectl get nodes
         kubectl get namespaces
         
-    - name: Deploy to Production
+    - name: Install Helm
+      uses: azure/setup-helm@v4
+      with:
+        version: '3.12.0'
+        
+    - name: Deploy to Production with Helm
       run: |
-        # Create namespace if it doesn't exist
-        kubectl create namespace prod --dry-run=client -o yaml | kubectl apply -f -
-        
-        # Deploy storage first
-        kubectl apply -f k8s-prod/storage.yaml
-        
-        # Deploy applications
-        kubectl apply -f k8s-prod/mysql.yaml
-        kubectl apply -f k8s-prod/backend.yaml
-        kubectl apply -f k8s-prod/frontend.yaml
-        kubectl apply -f k8s-prod/ingress.yaml
+        # Deploy infrastructure components (non-prod namespace)
         kubectl apply -f k8s-prod/grafana-ingress.yaml
         kubectl apply -f k8s-prod/argocd-ingress.yaml
+        
+        # Deploy application stack with Helm
+        helm upgrade --install user-management-app ./helm/user-management-app \
+          --namespace prod \
+          --create-namespace \
+          --set image.frontend.tag=${{ github.sha }} \
+          --set image.backend.tag=${{ github.sha }} \
+          --wait --timeout=300s
+        
         sleep 30
         
     - name: Verify Deployment
       run: |
+        # Show Helm release status
+        helm list -n prod
+        helm status user-management-app -n prod
+        
         # Show what was deployed
         kubectl get pods,svc,ingress -n prod
         kubectl get ingress -n monitoring
@@ -226,7 +234,7 @@ jobs:
         echo "\nAccess your ArgoCD at:"
         kubectl get ingress argocd-server-ingress -n argocd -o jsonpath='{.status.loadBalancer.ingress[0].hostname}' && echo "/" || echo "ALB hostname pending..."
         
-        echo "\nDeployment complete! ✅"
+        echo "\nHelm deployment complete! ✅"
         
   notify:
     runs-on: ubuntu-latest

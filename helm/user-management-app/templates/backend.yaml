@@ -1,14 +1,13 @@
-{{- if .Values.backend.enabled }}
 ---
 apiVersion: apps/v1
 kind: Deployment
 metadata:
   name: backend
-  namespace: {{ .Values.namespace }}
+  namespace: prod
   labels:
     app: backend
 spec:
-  replicas: {{ .Values.backend.replicaCount }}
+  replicas: 3
   selector:
     matchLabels:
       app: backend
@@ -19,15 +18,14 @@ spec:
     spec:
       containers:
         - name: backend
-          image: {{ .Values.global.dockerUsername }}/backend:{{ .Values.backend.image.tag }}
-          imagePullPolicy: {{ .Values.backend.image.pullPolicy }}
+          image: {{ .Values.image.backend.repository }}:{{ .Values.image.backend.tag }}
           ports:
-            - containerPort: {{ .Values.backend.service.targetPort }}
+            - containerPort: 5000
           env:
-            {{- range .Values.backend.env }}
-            - name: {{ .name }}
-              value: {{ .value | quote }}
-            {{- end }}
+            - name: DB_HOST
+              value: "mysql"
+            - name: DB_USER
+              value: "root"
             - name: DB_PASSWORD
               valueFrom:
                 secretKeyRef:
@@ -38,18 +36,18 @@ spec:
                 configMapKeyRef:
                   name: mysql-config
                   key: MYSQL_DATABASE
-
+            - name: JWT_SECRET
+              value: "your-secret-key"
 ---
 apiVersion: v1
 kind: Service
 metadata:
   name: backend-svc
-  namespace: {{ .Values.namespace }}
+  namespace: prod
 spec:
   selector:
     app: backend
   ports:
-    - port: {{ .Values.backend.service.port }}
-      targetPort: {{ .Values.backend.service.targetPort }}
-  type: {{ .Values.backend.service.type }}
-{{- end }}
+    - port: 5000
+      targetPort: 5000
+  type: ClusterIP
