@@ -202,13 +202,27 @@ jobs:
         kubectl apply -f k8s-prod/grafana-ingress.yaml
         kubectl apply -f k8s-prod/argocd-ingress.yaml
         
-        # Deploy application stack with Helm
-        helm upgrade --install user-management-app ./helm/user-management-app \
-          --namespace prod \
-          --create-namespace \
-          --set image.frontend.tag=${{ github.sha }} \
-          --set image.backend.tag=${{ github.sha }} \
-          --wait --timeout=300s
+        # Check if Helm release exists and handle accordingly
+        if helm list -n prod | grep -q user-management-app; then
+          echo "Helm release exists, upgrading..."
+          helm upgrade user-management-app ./helm/user-management-app \
+            --namespace prod \
+            --set image.frontend.tag=${{ github.sha }} \
+            --set image.backend.tag=${{ github.sha }} \
+            --wait --timeout=300s
+        else
+          echo "No existing Helm release, installing..."
+          # Clean up any existing non-Helm managed resources
+          kubectl delete deployment,service,secret,configmap,pvc -n prod --all --ignore-not-found=true
+          
+          # Install with Helm
+          helm install user-management-app ./helm/user-management-app \
+            --namespace prod \
+            --create-namespace \
+            --set image.frontend.tag=${{ github.sha }} \
+            --set image.backend.tag=${{ github.sha }} \
+            --wait --timeout=300s
+        fi
         
         sleep 30
         
